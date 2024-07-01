@@ -22,7 +22,10 @@ from llama_index.core.base.llms.generic_utils import (
 )
 from llama_index.core.llms.llm import LLM
 from llama_index.core.types import BaseOutputParser, PydanticProgramMode
-from llama_index.core.utilities.aws_utils import get_aws_service_client
+from llama_index.core.utilities.aws_utils import (
+    get_aws_service_client,
+    aget_aws_service_session,
+)
 from llama_index.llms.llama_cpp.llama_utils import (
     completion_to_prompt,
     messages_to_prompt,
@@ -118,6 +121,7 @@ class SageMakerLLM(LLM):
         gte=0,
     )
     _client: Any = PrivateAttr()
+    _asession: Any = PrivateAttr()
     _completion_to_prompt: Callable[[str, Optional[str]], str] = PrivateAttr()
 
     def __init__(
@@ -165,6 +169,13 @@ class SageMakerLLM(LLM):
             aws_session_token=aws_session_token,
             max_retries=max_retries,
             timeout=timeout,
+        )
+        self._asession = aget_aws_service_session(
+            profile_name=profile_name,
+            region_name=region_name,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_session_token=aws_session_token,
         )
         callback_manager = callback_manager or CallbackManager([])
 
@@ -258,6 +269,38 @@ class SageMakerLLM(LLM):
         completion_response_gen = self.stream_complete(prompt, formatted=True, **kwargs)
         return stream_completion_response_to_chat_response(completion_response_gen)
 
+    @llm_completion_callback()
+    async def acomplete(
+        self, prompt: str, formatted: bool = False, **kwargs: Any
+    ) -> CompletionResponse:
+        model_kwargs = {**self.model_kwargs, **kwargs}
+        if not formatted:
+            prompt = self._completion_to_prompt(prompt, self.system_prompt)
+
+        request_body = self.content_handler.serialize_input(prompt, model_kwargs)
+        async with self._asession.client("sagemaker-runtime") as client:
+            response = await client.invoke_endpoint(
+                EndpointName=self.endpoint_name,
+                Body=request_body,
+                ContentType=self.content_handler.content_type,
+                Accept=self.content_handler.accept,
+                **self.endpoint_kwargs,
+            )
+
+        response["Body"] = await self.content_handler.adeserialize_output(
+            response["Body"]
+        )
+        text = self.content_handler.remove_prefix(response["Body"], prompt)
+
+        return CompletionResponse(
+            text=text,
+            raw=response,
+            additional_kwargs={
+                "model_kwargs": model_kwargs,
+                "endpoint_kwargs": self.endpoint_kwargs,
+            },
+        )
+
     @llm_chat_callback()
     async def achat(
         self,
@@ -272,12 +315,6 @@ class SageMakerLLM(LLM):
         messages: Sequence[ChatMessage],
         **kwargs: Any,
     ) -> ChatResponseAsyncGen:
-        raise NotImplementedError
-
-    @llm_completion_callback()
-    async def acomplete(
-        self, prompt: str, formatted: bool = False, **kwargs: Any
-    ) -> CompletionResponse:
         raise NotImplementedError
 
     @llm_completion_callback()

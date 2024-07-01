@@ -15,7 +15,7 @@ disallow_untyped_defs = true
 # Remove venv skip when integrated with pre-commit
 exclude = ["_static", "build", "examples", "notebooks", "venv"]
 ignore_missing_imports = true
-python_version = "3.8"
+python_version = "3.9"
 
 [tool.poetry]
 authors = ["Jerry Liu <jerry@llamaindex.ai>"]
@@ -53,16 +53,17 @@ fsspec = ">=2023.5.0"
 httpx = "*"
 nest-asyncio = "^1.5.8"
 nltk = "^3.8.1"
-numpy = "<2.0.0"  # Pin until we adapt to Numpy v2
+numpy = ">1.26,<2.0.0"  # Pin until we adapt to Numpy v2
 openai = ">=1.1.0"
 pandas = "*"
-python = ">=3.8.1,<4.0"
+python = ">=3.9,<4.0"
 tenacity = ">=8.2.0,!=8.4.0,<9.0.0"  # Avoid 8.4.0 which lacks tenacity.asyncio
 tiktoken = ">=0.3.3"
 typing-extensions = ">=4.5.0"
 typing-inspect = ">=0.8.0"
 requests = ">=2.31.0"  # Pin to avoid CVE-2023-32681 in requests 2.3 to 2.30
 aiohttp = "^3.8.6"
+aioboto3 = "^12.0.0"
 networkx = ">=3.0"
 dirtyjson = "^1.0.8"
 tqdm = "^4.66.1"

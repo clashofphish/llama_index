@@ -42,6 +42,10 @@ class BaseIOHandler(BaseModel, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def adeserialize_output(self, response: "StreamingBody") -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def deserialize_streaming_output(self, response: bytes) -> str:
         raise NotImplementedError
 
@@ -60,6 +64,9 @@ class IOHandler(BaseIOHandler):
 
     def deserialize_output(self, response: "StreamingBody") -> str:
         return json.load(codecs.getreader("utf-8")(response))[0]["generated_text"]
+
+    async def adeserialize_output(self, response: "StreamingBody") -> str:
+        return json.loads(await response.read())[0]["generated_text"]
 
     def deserialize_streaming_output(self, response: bytes) -> str:
         response_str = (

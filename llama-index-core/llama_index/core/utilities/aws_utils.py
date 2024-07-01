@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     import botocore
+    import aiobotocore
 
 
 def get_aws_service_client(
@@ -48,3 +49,34 @@ def get_aws_service_client(
         raise ValueError("Please verify the provided credentials.") from (e)
 
     return client
+
+
+def aget_aws_service_session(
+    region_name: Optional[str] = None,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+    aws_session_token: Optional[str] = None,
+    profile_name: Optional[str] = None,
+) -> "aiobotocore.session.AioSession":
+    try:
+        import aioboto3
+    except ImportError:
+        raise ImportError("Please run `pip install aioboto3` to use AWS services.")
+
+    try:
+        if not profile_name and aws_access_key_id:
+            session = aioboto3.Session(
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                aws_session_token=aws_session_token,
+                region_name=region_name,
+            )
+        else:
+            session = aioboto3.Session(
+                profile_name=profile_name, region_name=region_name
+            )
+    except Exception as e:
+        print(e)
+        raise ValueError("Please verify the provided credentials.") from (e)
+
+    return session
